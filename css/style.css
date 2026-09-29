@@ -94,3 +94,34 @@ main { max-width: 900px; margin: 0 auto; padding: 20px; }
   .linha { font-size: 13px; }
   .dialog-backup { padding: 18px; }
 }
+/* ===== LOGO TRG CIFRAS ===== */
+
+.header-esquerda {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-esquerda img {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.header-esquerda h1 {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+@media (max-width: 600px) {
+  .header-esquerda img {
+    width: 44px;
+    height: 44px;
+  }
+
+  .header-esquerda h1 {
+    font-size: 19px;
+  }
+}
