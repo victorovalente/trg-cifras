@@ -1,6 +1,6 @@
 // TRG Cifras — Modo Offline
 
-const CACHE_NAME = 'trg-cifras-v1';
+const CACHE_NAME = 'trg-cifras-v2';
 
 const ARQUIVOS = [
   './',
@@ -11,7 +11,10 @@ const ARQUIVOS = [
   './js/cifra.js',
   './js/autoscroll.js',
   './js/backup.js',
-  './js/app.js'
+'./js/app.js',
+'./manifest.webmanifest',
+'./icons/icon-192.png',
+'./icons/icon-512.png'
 ];
 
 // Salva os arquivos necessários para funcionar offline
