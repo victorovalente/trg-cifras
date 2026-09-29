@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#2c3e50">
+  <title>TRG Cifras</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header>
+  <div class="header-esquerda">
+    <button class="voltar oculto" id="btnVoltar" type="button">← Voltar</button>
+    <h1 id="tituloHeader">🎸 TRG Cifras</h1>
+  </div>
+  <div class="header-direita">
+    <button class="btn-header-sec" id="btnExportar" type="button" title="Baixar backup .json">⬇ Exportar</button>
+    <button class="btn-header-sec" id="btnImportar" type="button" title="Restaurar backup .json">⬆ Importar</button>
+    <input type="file" id="inputImportar" accept=".json,application/json" hidden>
+    <button id="btnNova" type="button">+ Nova cifra</button>
+  </div>
+</header>
+
+<main>
+  <section id="telaLista">
+    <input class="busca" id="busca" type="search" placeholder="Buscar por título ou artista..." aria-label="Buscar cifras">
+    <div class="lista" id="lista"></div>
+    <p id="vazio" class="vazio">Nenhuma cifra encontrada. Clique em <b>+ Nova cifra</b> para cadastrar uma.</p>
+  </section>
+
+  <section id="telaEditor" class="oculto">
+    <div class="campo">
+      <label for="inTitulo">Título</label>
+      <input id="inTitulo" placeholder="Ex: Bondade de Deus" maxlength="200">
+    </div>
+    <div class="campo">
+      <label for="inArtista">Artista</label>
+      <input id="inArtista" placeholder="Ex: Isaías Saad" maxlength="200">
+    </div>
+    <div class="campo">
+      <label for="inTom">Tom original</label>
+      <select id="inTom"></select>
+    </div>
+    <div class="campo">
+      <label for="inCifra">Cifra — insira <code>[G]</code> antes da sílaba. Para seções, use <code>[Verso]</code> em uma linha própria.</label>
+      <textarea id="inCifra" spellcheck="false" placeholder="[Intro]
+[G] [D/F#] [Em] [C]
+
+[Verso]
+[G]Eu amo a Tua voz...
+[D/F#]Que me chama..."></textarea>
+    </div>
+    <div class="botoes">
+      <button class="btn btn-primario" id="btnSalvar" type="button">Salvar</button>
+      <button class="btn btn-secundario" id="btnCancelar" type="button">Cancelar</button>
+    </div>
+  </section>
+
+  <section id="telaVer" class="oculto">
+    <div class="topo-musica">
+      <div>
+        <h2 id="vTitulo"></h2>
+        <p id="vArtista" class="artista"></p>
+      </div>
+      <div class="transpor" aria-label="Controles da cifra">
+        <button id="btnMenos" type="button" title="Descer meio tom">−</button>
+        <span id="vTom" aria-live="polite"></span>
+        <button id="btnMais" type="button" title="Subir meio tom">+</button>
+        <button class="btn-grafia" id="btnGrafia" type="button" title="Alternar grafia automática ou manual">
+          <span id="grafiaLabel">♯</span>
+        </button>
+        <button class="btn btn-secundario" id="btnResetar" type="button">Resetar</button>
+        <button class="btn btn-secundario" id="btnEditar" type="button">Editar</button>
+        <button class="btn btn-perigo" id="btnExcluir" type="button">Excluir</button>
+      </div>
+    </div>
+
+    <div class="autoscroll-bar">
+      <button class="btn-autoscroll" id="btnAutoScroll" type="button" title="Iniciar/parar rolagem automática">▶ Auto-scroll</button>
+      <label class="velocidade-label" for="rangeVelocidade">
+        Velocidade
+        <input type="range" id="rangeVelocidade" min="1" max="10" value="4">
+        <span id="velocidadeValor">4</span>
+      </label>
+      <button class="btn btn-secundario btn-pequeno" id="btnTopo" type="button" title="Voltar ao topo">↑ Topo</button>
+    </div>
+    <div class="cifra" id="vCifra" tabindex="0" aria-label="Cifra musical; use a barra de rolagem ou auto-scroll"></div>
+  </section>
+</main>
+
+<dialog id="dialogImportacao" class="dialog-backup" aria-labelledby="tituloImportacao">
+  <h2 id="tituloImportacao">Importar cifras</h2>
+  <p id="resumoImportacao"></p>
+  <p class="aviso-backup"><strong>Mesclar</strong> mantém as cifras atuais e adiciona as que ainda não existem (mesmo título + artista são considerados duplicados).</p>
+  <div class="botoes" id="escolhasImportacao">
+    <button class="btn btn-primario" id="btnMesclar" type="button">Mesclar</button>
+    <button class="btn btn-perigo" id="btnSubstituir" type="button">Substituir tudo…</button>
+    <button class="btn btn-secundario" id="btnCancelarImportacao" type="button">Cancelar</button>
+  </div>
+  <div id="confirmarSubstituicao" class="oculto">
+    <p class="aviso-perigo"><strong>Atenção:</strong> isso apaga todas as cifras atuais que não estão no arquivo. Exporte um backup antes, se desejar.</p>
+    <label for="textoConfirmacao">Digite <strong>SUBSTITUIR</strong> para confirmar:</label>
+    <input id="textoConfirmacao" type="text" autocomplete="off" spellcheck="false">
+    <div class="botoes confirmacao-botoes">
+      <button class="btn btn-perigo" id="btnConfirmarSubstituicao" type="button" disabled>Confirmar substituição</button>
+      <button class="btn btn-secundario" id="btnVoltarImportacao" type="button">Voltar</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- Ordem importa: notas → storage → cifra → autoscroll → backup → app -->
+<script src="js/notas.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/cifra.js"></script>
+<script src="js/autoscroll.js"></script>
+<script src="js/backup.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
