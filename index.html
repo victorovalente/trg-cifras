@@ -115,5 +115,13 @@
 <script src="js/autoscroll.js"></script>
 <script src="js/backup.js"></script>
 <script src="js/app.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .catch(erro => console.error('Erro no modo offline:', erro));
+    });
+  }
+</script>
 </body>
 </html>
