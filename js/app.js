@@ -16,7 +16,7 @@ function mostrarTela(id) {
 function voltarParaLista() {
   AutoScroll.parar();
   visualizandoId = null;
-  $('tituloHeader').textContent = '🎸 TRG Cifras';
+  $('tituloHeader').textContent = 'TRG Cifras';
   renderLista($('busca').value);
   mostrarTela('telaLista');
 }
