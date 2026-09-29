@@ -5,6 +5,7 @@ let visualizandoId = null;
 let semitons = 0;
 let grafiaForcada = null; // null: automática; true: bemol; false: sustenido
 let pendentesImportacao = null;
+let importando = false;
 const $ = id => document.getElementById(id);
 
 function mostrarTela(id) {
@@ -75,22 +76,56 @@ function tentarSalvar(novas) {
   }
 }
 
-function salvarCifra() {
+// ===== SALVAR CIFRA NA NUVEM =====
+
+async function salvarCifra() {
   const titulo = $('inTitulo').value.trim();
   const artista = $('inArtista').value.trim();
   const tom = $('inTom').value;
   const corpo = $('inCifra').value;
-  if (!titulo) { alert('Coloca pelo menos um título 🙂'); return; }
-  if (!corpo.trim()) { alert('A cifra está vazia.'); return; }
-  const novas = cifras.map(c => ({ ...c }));
-  if (editandoId) {
-    const c = novas.find(x => x.id === editandoId);
-    if (!c) { alert('Essa cifra não foi encontrada.'); return; }
-    Object.assign(c, { titulo, artista, tom, corpo });
-  } else {
-    novas.push({ id: gerarId(), titulo, artista, tom, corpo });
+
+  if (!titulo || !corpo.trim()) {
+    alert('Preencha o título e a cifra.');
+    return;
   }
-  if (tentarSalvar(novas)) voltarParaLista();
+
+  const existente = editandoId
+    ? cifras.find(c => c.id === editandoId)
+    : null;
+
+  if (editandoId && !existente) {
+    alert('Cifra não encontrada.');
+    return;
+  }
+
+  const cifra = {
+    id: existente ? existente.id : gerarId(),
+    titulo,
+    artista,
+    tom,
+    corpo
+  };
+
+  try {
+    if (!window.salvarCifraNaNuvem) {
+      throw new Error('Firebase não está conectado.');
+    }
+
+    await window.salvarCifraNaNuvem(cifra);
+
+    const novas = existente
+      ? cifras.map(c => c.id === cifra.id ? cifra : c)
+      : [...cifras, cifra];
+
+    if (tentarSalvar(novas)) {
+      voltarParaLista();
+      alert('Música salva na nuvem!');
+    }
+
+  } catch (erro) {
+    console.error(erro);
+    alert('Não foi possível salvar na nuvem. Verifique seu login e a conexão.');
+  }
 }
 
 function abrirVisualizador(id) {
@@ -135,23 +170,34 @@ function exportarBackup() {
 async function tratarImportacao(evento) {
   const file = evento.target.files[0];
   if (!file) return;
-  evento.target.value = ''; // permite escolher o mesmo arquivo de novo
+  evento.target.value = '';
+
   try {
+    if (typeof window.buscarCifrasNaNuvem !== 'function') {
+      throw new Error('Firebase ainda não está conectado.');
+    }
+
     const resultado = await Backup.lerArquivo(file);
+    // Não confiar em uma lista que pode estar desatualizada no navegador.
+    const atuais = await window.buscarCifrasNaNuvem();
     pendentesImportacao = resultado.cifras;
-    const simulacao = Backup.mesclar(cifras, pendentesImportacao, 'mesclar');
-    const novas = simulacao.length - cifras.length;
+    const simulacao = Backup.mesclar(atuais, pendentesImportacao, 'mesclar');
+    const novas = simulacao.length - atuais.length;
+
     $('resumoImportacao').textContent =
-      `${pendentesImportacao.length} cifra(s) válida(s) no arquivo; ${novas} nova(s) para mesclar, ` +
+      `${pendentesImportacao.length} cifra(s) válida(s) no arquivo; ` +
+      `${novas} nova(s) para adicionar; ` +
       `${pendentesImportacao.length - novas} duplicada(s)` +
-      (resultado.ignoradas ? `; ${resultado.ignoradas} inválida(s) ignorada(s).` : '.');
+      (resultado.ignoradas ? `; ${resultado.ignoradas} inválida(s) ignorada(s).` : '.') +
+      ' As músicas já cadastradas não serão alteradas.';
+
     $('confirmarSubstituicao').classList.add('oculto');
     $('escolhasImportacao').classList.remove('oculto');
-    $('textoConfirmacao').value = '';
-    $('btnConfirmarSubstituicao').disabled = true;
     $('dialogImportacao').showModal();
-  } catch (err) {
-    alert('Erro ao importar: ' + err.message);
+  } catch (erro) {
+    pendentesImportacao = null;
+    console.error(erro);
+    alert('Não foi possível preparar a importação: ' + erro.message);
   }
 }
 
@@ -160,16 +206,48 @@ function fecharImportacao() {
   pendentesImportacao = null;
 }
 
-function aplicarImportacao(modo) {
-  if (!pendentesImportacao) return;
-  const novas = Backup.mesclar(cifras, pendentesImportacao, modo);
-  const acrescentadas = novas.length - cifras.length;
-  if (!tentarSalvar(novas)) return;
-  fecharImportacao();
-  voltarParaLista();
-  alert(modo === 'mesclar'
-    ? (acrescentadas > 0 ? `${acrescentadas} cifra(s) adicionada(s). As existentes foram preservadas.` : 'Nenhuma cifra adicionada: todas já existiam.')
-    : `${novas.length} cifra(s) restaurada(s) do backup.`);
+async function aplicarImportacao() {
+  if (!pendentesImportacao || importando) return;
+
+  const botao = $('btnMesclar');
+  importando = true;
+  botao.disabled = true;
+  $('btnCancelarImportacao').disabled = true;
+  botao.textContent = 'Importando...';
+
+  try {
+    if (
+      typeof window.buscarCifrasNaNuvem !== 'function' ||
+      typeof window.importarCifrasNaNuvem !== 'function'
+    ) {
+      throw new Error('Firebase ainda não está conectado.');
+    }
+
+    // Reconsultar antes de salvar para respeitar cadastros de outras janelas.
+    const atuais = await window.buscarCifrasNaNuvem();
+    const mescladas = Backup.mesclar(atuais, pendentesImportacao, 'mesclar');
+    const idsAtuais = new Set(atuais.map(c => c.id));
+    const adicionar = mescladas.filter(c => !idsAtuais.has(c.id));
+
+    if (adicionar.length > 0) {
+      await window.importarCifrasNaNuvem(adicionar);
+    }
+
+    importando = false;
+    fecharImportacao();
+    voltarParaLista();
+    alert(adicionar.length > 0
+      ? `${adicionar.length} música(s) adicionada(s) à nuvem! As existentes foram preservadas.`
+      : 'Nenhuma música adicionada: todas já existiam na nuvem.');
+  } catch (erro) {
+    console.error(erro);
+    alert('Não foi possível importar: ' + erro.message);
+  } finally {
+    importando = false;
+    botao.disabled = false;
+    $('btnCancelarImportacao').disabled = false;
+    botao.textContent = 'Importar na nuvem';
+  }
 }
 
 function ligarEventos() {
@@ -186,10 +264,40 @@ function ligarEventos() {
     atualizarVisualizador();
   };
   $('btnEditar').onclick = () => abrirEditor(visualizandoId);
-  $('btnExcluir').onclick = () => {
-    if (!confirm('Excluir essa cifra? Essa ação não pode ser desfeita sem um backup.')) return;
-    if (tentarSalvar(cifras.filter(x => x.id !== visualizandoId))) voltarParaLista();
-  };
+  // ===== EXCLUIR CIFRA DA NUVEM =====
+
+$('btnExcluir').onclick = async () => {
+
+  const id = visualizandoId;
+
+  if (!id || !confirm(
+    'Excluir esta música do repertório de TODOS os usuários?'
+  )) return;
+
+  if (typeof window.excluirCifraDaNuvem !== 'function') {
+    alert('Firebase ainda não está conectado.');
+    return;
+  }
+
+  const botao = $('btnExcluir');
+  botao.disabled = true;
+
+  try {
+    await window.excluirCifraDaNuvem(id);
+
+    if (visualizandoId === id) {
+      voltarParaLista();
+    }
+
+  } catch (erro) {
+    console.error(erro);
+    alert('Não foi possível excluir. Verifique sua conexão e seu login.');
+
+  } finally {
+    botao.disabled = false;
+  }
+
+};
   $('btnAutoScroll').onclick = () => AutoScroll.alternar($('vCifra'));
   $('rangeVelocidade').oninput = e => {
     const v = Number(e.target.value);
@@ -202,24 +310,17 @@ function ligarEventos() {
   $('inputImportar').onchange = tratarImportacao;
   $('busca').oninput = e => renderLista(e.target.value);
 
-  $('btnMesclar').onclick = () => aplicarImportacao('mesclar');
-  $('btnSubstituir').onclick = () => {
-    $('escolhasImportacao').classList.add('oculto');
-    $('confirmarSubstituicao').classList.remove('oculto');
-    $('textoConfirmacao').focus();
-  };
-  $('btnCancelarImportacao').onclick = fecharImportacao;
-  $('btnVoltarImportacao').onclick = () => {
-    $('confirmarSubstituicao').classList.add('oculto');
-    $('escolhasImportacao').classList.remove('oculto');
-  };
-  $('textoConfirmacao').oninput = e => {
-    $('btnConfirmarSubstituicao').disabled = e.target.value.trim() !== 'SUBSTITUIR';
-  };
-  $('btnConfirmarSubstituicao').onclick = () => {
-    if ($('textoConfirmacao').value.trim() !== 'SUBSTITUIR') return;
-    aplicarImportacao('substituir');
-  };
+   $('btnMesclar').textContent = 'Importar na nuvem';
+   $('btnMesclar').onclick = aplicarImportacao;
+   // Substituição desativada: o importador não apaga músicas existentes.
+   $('btnSubstituir').style.display = 'none';
+   $('btnCancelarImportacao').onclick = () => {
+     if (!importando) fecharImportacao();
+   };
+   $('dialogImportacao').addEventListener('cancel', e => {
+     if (importando) e.preventDefault();
+   });
+
   $('dialogImportacao').addEventListener('close', () => { pendentesImportacao = null; });
 
   document.addEventListener('keydown', e => {
@@ -267,3 +368,31 @@ function ligarEventos() {
   ligarEventos();
   renderLista();
 })();
+// ===== SINCRONIZAÇÃO COM A NUVEM =====
+
+window.receberCifrasDaNuvem = function(lista) {
+
+  if (!Array.isArray(lista)) return;
+
+  // Atualizar o repertório
+  cifras = lista;
+
+  // Atualizar a lista na tela
+  renderLista($('busca').value);
+
+  // Atualizar a música aberta, se necessário
+  if (visualizandoId) {
+
+    const musica = cifras.find(
+      c => c.id === visualizandoId
+    );
+
+    if (musica) {
+      $('vTitulo').textContent = musica.titulo;
+      $('vArtista').textContent = musica.artista || '';
+      atualizarVisualizador();
+    } else {
+      voltarParaLista();
+    }
+  }
+};
