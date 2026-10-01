@@ -1,24 +1,25 @@
 {
   "name": "TRG Cifras",
   "short_name": "TRG Cifras",
-  "description": "Seu aplicativo de cifras musicais",
+  "description": "Seu repertório pessoal de cifras com playlists, favoritos, transposição e auto-scroll.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#101015",
-  "theme_color": "#2c3e50",
+  "orientation": "any",
+  "background_color": "#071426",
+  "theme_color": "#071426",
   "icons": [
     {
       "src": "./icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     },
     {
       "src": "./icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     }
   ]
 }
