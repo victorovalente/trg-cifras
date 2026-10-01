@@ -2,184 +2,343 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#2c3e50">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#071426">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="TRG Cifras">
   <title>TRG Cifras</title>
-  <link rel="stylesheet" href="css/style.css">
   <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<header>
-  <div class="header-esquerda">
-    <button class="voltar oculto" id="btnVoltar" type="button">← Voltar</button>
-    <img src="icons/icon-192.png"
-     alt="Logo TRG Cifras"
-     width="40"
-     height="40">
-    <h1 id="tituloHeader">TRG Cifras</h1>
-  </div>
-  <div class="header-direita">
-    <button class="btn-header-sec" id="btnLogin" type="button">
-  🔐 Entrar
-</button>
-
-    <button class="btn-header-sec" id="btnExportar" type="button" title="Baixar backup .json">⬇ Exportar</button>
-    <button class="btn-header-sec" id="btnImportar" type="button" title="Restaurar backup .json">⬆ Importar</button>
-    <input type="file" id="inputImportar" accept=".json,application/json" hidden>
-    <button id="btnNova" type="button">+ Nova cifra</button>
-  </div>
-</header>
-
-<main>
-  <section id="telaLista">
-    <input class="busca" id="busca" type="search" placeholder="Buscar por título ou artista..." aria-label="Buscar cifras">
-    <div class="lista" id="lista"></div>
-    <p id="vazio" class="vazio">Nenhuma cifra encontrada. Clique em <b>+ Nova cifra</b> para cadastrar uma.</p>
-  </section>
-
-  <section id="telaEditor" class="oculto">
-    <div class="campo">
-      <label for="inTitulo">Título</label>
-      <input id="inTitulo" placeholder="Ex: Bondade de Deus" maxlength="200">
+  <header class="topbar">
+    <div class="brand">
+      <button id="btnVoltar" class="icon-btn oculto" type="button" aria-label="Voltar">←</button>
+      <img src="icons/icon-192.png" alt="TRG Cifras">
+      <div class="brand-copy">
+        <h1 id="tituloHeader">TRG Cifras</h1>
+        <span id="statusNuvem" class="status">Carregando repertório…</span>
+      </div>
     </div>
-    <div class="campo">
-      <label for="inArtista">Artista</label>
-      <input id="inArtista" placeholder="Ex: Isaías Saad" maxlength="200">
+
+    <div class="header-actions">
+      <button id="btnInstalar" class="ghost-btn oculto" type="button">Instalar</button>
+      <button id="btnLogin" class="ghost-btn" type="button">🔐 Entrar</button>
     </div>
-    <div class="campo">
-      <label for="inTom">Tom original</label>
-      <select id="inTom"></select>
-    </div>
-    <div class="campo">
-      <label for="inCifra">Cifra — insira <code>[G]</code> antes da sílaba. Para seções, use <code>[Verso]</code> em uma linha própria.</label>
-      <textarea id="inCifra" spellcheck="false" placeholder="[Intro]
+  </header>
+
+  <main>
+    <!-- DASHBOARD -->
+    <section id="telaDashboard">
+      <section class="hero">
+        <div class="hero-copy">
+          <span class="eyebrow">TRG CIFRAS</span>
+          <h2>Seu repertório, pronto para tocar.</h2>
+          <p>Abra o app, pesquise a música e comece. Sem precisar navegar por menus.</p>
+        </div>
+        <div class="hero-count">
+          <strong id="totalMusicas">0</strong>
+          <span>músicas</span>
+        </div>
+      </section>
+
+      <section class="dashboard-search">
+        <label for="buscaDashboard">Buscar música ou artista</label>
+        <div class="search-wrap destaque">
+          <span aria-hidden="true">⌕</span>
+          <input id="buscaDashboard" type="search" placeholder="Ex.: Grande é o Senhor…" autocomplete="off">
+        </div>
+        <div id="resultadoDashboard" class="search-results oculto"></div>
+      </section>
+
+      <section class="quick-grid">
+        <button class="quick-card playlist-card" data-acao="playlists" type="button">
+          <span class="quick-icon">▶</span>
+          <strong>Minha playlist</strong>
+          <small id="resumoPlaylists">Monte sua sequência</small>
+        </button>
+        <button class="quick-card" data-acao="favoritas" type="button">
+          <span class="quick-icon">★</span>
+          <strong>Favoritas</strong>
+          <small id="resumoFavoritas">0 músicas</small>
+        </button>
+        <button class="quick-card" data-acao="recentes" type="button">
+          <span class="quick-icon">◷</span>
+          <strong>Recentes</strong>
+          <small id="resumoRecentes">0 músicas</small>
+        </button>
+        <button class="quick-card" data-acao="repertorio" type="button">
+          <span class="quick-icon">♫</span>
+          <strong>Repertório</strong>
+          <small>Todas as cifras</small>
+        </button>
+      </section>
+
+      <section class="dashboard-section">
+        <div class="section-title-row">
+          <div>
+            <span class="eyebrow">ATALHO</span>
+            <h3>Últimas abertas</h3>
+          </div>
+          <button id="btnVerRecentes" class="link-btn" type="button">Ver todas</button>
+        </div>
+        <div id="dashboardRecentes" class="song-list compact"></div>
+        <div id="dashboardSemRecentes" class="mini-empty">As músicas que você abrir aparecerão aqui.</div>
+      </section>
+
+      <section id="adminBar" class="admin-bar oculto">
+        <div>
+          <strong>Área do administrador</strong>
+          <small>Gerencie o repertório compartilhado.</small>
+        </div>
+        <div class="admin-actions">
+          <button id="btnNova" class="btn primary" type="button">＋ Nova cifra</button>
+          <button id="btnImportar" class="btn purple" type="button">⇧ Importar</button>
+          <button id="btnExportar" class="btn secondary" type="button">⇩ Exportar</button>
+          <input type="file" id="inputImportar" accept=".json,application/json" hidden>
+        </div>
+      </section>
+    </section>
+
+    <!-- REPERTÓRIO -->
+    <section id="telaRepertorio" class="oculto">
+      <div class="section-heading">
+        <div>
+          <span class="eyebrow">BIBLIOTECA</span>
+          <h2 id="tituloLista">Repertório</h2>
+        </div>
+      </div>
+
+      <div class="search-wrap">
+        <span aria-hidden="true">⌕</span>
+        <input id="busca" type="search" placeholder="Buscar música ou artista…" aria-label="Buscar músicas">
+      </div>
+
+      <div class="tabs" role="tablist">
+        <button class="tab ativo" data-filtro="todas" type="button">Todas</button>
+        <button class="tab" data-filtro="favoritas" type="button">★ Favoritas</button>
+        <button class="tab" data-filtro="recentes" type="button">◷ Recentes</button>
+      </div>
+
+      <div id="lista" class="song-list"></div>
+      <div id="vazio" class="empty oculto">
+        <div>♫</div>
+        <strong>Nenhuma música encontrada</strong>
+        <span>Tente outro termo ou filtro.</span>
+      </div>
+    </section>
+
+    <!-- PLAYLISTS -->
+    <section id="telaPlaylists" class="oculto">
+      <div class="section-heading playlist-heading">
+        <div>
+          <span class="eyebrow">ORGANIZAÇÃO</span>
+          <h2>Minha playlist</h2>
+          <p>Crie listas para cultos, ensaios, apresentações ou qualquer repertório.</p>
+        </div>
+        <button id="btnCriarPlaylist" class="btn primary" type="button">＋ Nova playlist</button>
+      </div>
+      <div id="listaPlaylists" class="playlist-grid"></div>
+      <div id="playlistsVazio" class="empty oculto">
+        <div>▶</div>
+        <strong>Nenhuma playlist criada</strong>
+        <span>Crie uma para montar a ordem das músicas.</span>
+      </div>
+    </section>
+
+    <!-- PLAYLIST ABERTA -->
+    <section id="telaPlaylist" class="oculto">
+      <div class="playlist-open-head">
+        <div>
+          <span class="eyebrow">PLAYLIST</span>
+          <h2 id="playlistTitulo"></h2>
+          <p id="playlistResumo"></p>
+        </div>
+        <div class="playlist-actions">
+          <button id="btnTocarPlaylist" class="btn primary" type="button">▶ Tocar</button>
+          <button id="btnRenomearPlaylist" class="btn secondary" type="button">Renomear</button>
+          <button id="btnExcluirPlaylist" class="btn danger" type="button">Excluir</button>
+        </div>
+      </div>
+      <button id="btnAdicionarMusicaPlaylist" class="add-song-card" type="button">＋ Adicionar música</button>
+      <div id="musicasPlaylist" class="playlist-song-list"></div>
+      <div id="playlistSemMusicas" class="mini-empty">Esta playlist ainda está vazia.</div>
+    </section>
+
+    <!-- EDITOR -->
+    <section id="telaEditor" class="oculto editor-shell">
+      <div class="section-heading">
+        <div>
+          <span class="eyebrow">ADMINISTRADOR</span>
+          <h2 id="tituloEditor">Nova cifra</h2>
+        </div>
+      </div>
+
+      <div class="editor-grid">
+        <label class="field">Título
+          <input id="inTitulo" maxlength="200" placeholder="Ex.: Grande é o Senhor">
+        </label>
+        <label class="field">Artista
+          <input id="inArtista" maxlength="200" placeholder="Opcional">
+        </label>
+        <label class="field">Tom original
+          <select id="inTom"></select>
+        </label>
+        <label class="field field-full">Cifra
+          <span class="field-hint">Use [G] antes da sílaba e [Refrão] em uma linha própria.</span>
+          <textarea id="inCifra" spellcheck="false" placeholder="[Intro]
 [G] [D/F#] [Em] [C]
 
 [Verso]
-[G]Eu amo a Tua voz...
-[D/F#]Que me chama..."></textarea>
-    </div>
-    <div class="botoes">
-      <button class="btn btn-primario" id="btnSalvar" type="button">Salvar</button>
-      <button class="btn btn-secundario" id="btnCancelar" type="button">Cancelar</button>
-    </div>
-  </section>
-
-  <section id="telaVer" class="oculto">
-    <div class="topo-musica">
-      <div>
-        <h2 id="vTitulo"></h2>
-        <p id="vArtista" class="artista"></p>
+[G]Minha letra…"></textarea>
+        </label>
       </div>
-      <div class="transpor" aria-label="Controles da cifra">
-        <button id="btnMenos" type="button" title="Descer meio tom">−</button>
-        <span id="vTom" aria-live="polite"></span>
-        <button id="btnMais" type="button" title="Subir meio tom">+</button>
-        <button class="btn-grafia" id="btnGrafia" type="button" title="Alternar grafia automática ou manual">
-          <span id="grafiaLabel">♯</span>
+      <div class="form-actions">
+        <button id="btnSalvar" class="btn primary" type="button">Salvar na nuvem</button>
+        <button id="btnCancelar" class="btn secondary" type="button">Cancelar</button>
+      </div>
+    </section>
+
+    <!-- VISUALIZADOR -->
+    <section id="telaVer" class="oculto viewer-shell">
+      <div class="viewer-head">
+        <div class="viewer-title">
+          <button id="btnFavorito" class="favorite-btn" type="button" aria-label="Favoritar">☆</button>
+          <div>
+            <h2 id="vTitulo"></h2>
+            <p id="vArtista"></p>
+          </div>
+        </div>
+        <div id="viewerAdminActions" class="viewer-admin oculto">
+          <button id="btnEditar" class="btn secondary" type="button">Editar</button>
+          <button id="btnExcluir" class="btn danger" type="button">Excluir</button>
+        </div>
+      </div>
+
+      <div class="transpose-card">
+        <button id="btnMenos" class="round-btn" type="button" title="Descer meio tom">−</button>
+        <button id="btnGrafia" class="tone-btn" type="button" title="Alternar sustenido/bemol">
+          <span>Tom:</span> <strong id="vTom">G</strong> <em id="grafiaLabel">♯</em>
         </button>
-        <button class="btn btn-secundario" id="btnResetar" type="button">Resetar</button>
-        <button class="btn btn-secundario" id="btnEditar" type="button">Editar</button>
-        <button class="btn btn-perigo" id="btnExcluir" type="button">Excluir</button>
+        <button id="btnMais" class="round-btn" type="button" title="Subir meio tom">＋</button>
+        <button id="btnResetar" class="reset-btn" type="button">Original</button>
       </div>
-    </div>
 
-    <div class="autoscroll-bar">
-      <button class="btn-autoscroll" id="btnAutoScroll" type="button" title="Iniciar/parar rolagem automática">▶ Auto-scroll</button>
-      <label class="velocidade-label" for="rangeVelocidade">
-        Velocidade
-        <input type="range" id="rangeVelocidade" min="1" max="10" value="4">
-        <span id="velocidadeValor">4</span>
+      <div id="vCifra" class="cifra" tabindex="0"></div>
+
+      <div id="playlistPlayer" class="playlist-player oculto">
+        <button id="btnPlaylistAnterior" type="button">← Anterior</button>
+        <span id="playlistPosicao"></span>
+        <button id="btnPlaylistProxima" type="button">Próxima →</button>
+      </div>
+
+      <div class="player-bar">
+        <button id="btnTopo" class="player-mini" type="button" title="Topo">↑</button>
+        <button id="btnAutoScroll" class="player-main" type="button">▶ Auto-scroll</button>
+        <label class="speed">Vel.
+          <input id="rangeVelocidade" type="range" min="1" max="10" value="4">
+          <span id="velocidadeValor">4</span>
+        </label>
+      </div>
+    </section>
+  </main>
+
+  <nav class="bottom-nav" aria-label="Navegação">
+    <button class="nav-item ativo" data-nav="dashboard" type="button"><span>⌂</span>Início</button>
+    <button class="nav-item" data-nav="repertorio" type="button"><span>♫</span>Repertório</button>
+    <button class="nav-item" data-nav="playlists" type="button"><span>▶</span>Playlists</button>
+    <button class="nav-item" data-nav="favoritas" type="button"><span>★</span>Favoritas</button>
+    <button class="nav-item" id="navMais" type="button"><span>•••</span>Mais</button>
+  </nav>
+
+  <!-- LOGIN -->
+  <dialog id="dialogLogin" class="dialog">
+    <form id="formLogin">
+      <div class="dialog-icon">🔐</div>
+      <h2>Acesso administrativo</h2>
+      <p>Entre para cadastrar, editar, importar e excluir cifras.</p>
+      <label class="field">E-mail
+        <input type="email" id="loginEmail" autocomplete="username" required>
       </label>
-      <button class="btn btn-secundario btn-pequeno" id="btnTopo" type="button" title="Voltar ao topo">↑ Topo</button>
+      <label class="field">Senha
+        <input type="password" id="loginSenha" autocomplete="current-password" required>
+      </label>
+      <p id="loginMensagem" class="login-msg" aria-live="polite"></p>
+      <div class="form-actions">
+        <button class="btn primary" type="submit">Entrar</button>
+        <button id="btnFecharLogin" class="btn secondary" type="button">Cancelar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- IMPORTAÇÃO -->
+  <dialog id="dialogImportacao" class="dialog">
+    <div class="dialog-icon">⇧</div>
+    <h2>Importar cifras</h2>
+    <p id="resumoImportacao"></p>
+    <p class="notice">A importação adiciona apenas músicas novas. O repertório atual não será apagado.</p>
+    <div class="form-actions">
+      <button id="btnMesclar" class="btn primary" type="button">Importar na nuvem</button>
+      <button id="btnCancelarImportacao" class="btn secondary" type="button">Cancelar</button>
     </div>
-    <div class="cifra" id="vCifra" tabindex="0" aria-label="Cifra musical; use a barra de rolagem ou auto-scroll"></div>
-  </section>
-</main>
+  </dialog>
 
-<dialog id="dialogImportacao" class="dialog-backup" aria-labelledby="tituloImportacao">
-  <h2 id="tituloImportacao">Importar cifras</h2>
-  <p id="resumoImportacao"></p>
-  <p class="aviso-backup"><strong>Mesclar</strong> mantém as cifras atuais e adiciona as que ainda não existem (mesmo título + artista são considerados duplicados).</p>
-  <div class="botoes" id="escolhasImportacao">
-    <button class="btn btn-primario" id="btnMesclar" type="button">Mesclar</button>
-    <button class="btn btn-perigo" id="btnSubstituir" type="button">Substituir tudo…</button>
-    <button class="btn btn-secundario" id="btnCancelarImportacao" type="button">Cancelar</button>
-  </div>
-  <div id="confirmarSubstituicao" class="oculto">
-    <p class="aviso-perigo"><strong>Atenção:</strong> isso apaga todas as cifras atuais que não estão no arquivo. Exporte um backup antes, se desejar.</p>
-    <label for="textoConfirmacao">Digite <strong>SUBSTITUIR</strong> para confirmar:</label>
-    <input id="textoConfirmacao" type="text" autocomplete="off" spellcheck="false">
-    <div class="botoes confirmacao-botoes">
-      <button class="btn btn-perigo" id="btnConfirmarSubstituicao" type="button" disabled>Confirmar substituição</button>
-      <button class="btn btn-secundario" id="btnVoltarImportacao" type="button">Voltar</button>
+  <!-- NOVA PLAYLIST -->
+  <dialog id="dialogPlaylist" class="dialog">
+    <form id="formPlaylist">
+      <div class="dialog-icon">▶</div>
+      <h2 id="dialogPlaylistTitulo">Nova playlist</h2>
+      <label class="field">Nome
+        <input id="nomePlaylist" maxlength="80" placeholder="Ex.: Culto domingo" required>
+      </label>
+      <div class="form-actions">
+        <button class="btn primary" type="submit">Salvar</button>
+        <button id="btnCancelarPlaylist" class="btn secondary" type="button">Cancelar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- ADICIONAR MÚSICA -->
+  <dialog id="dialogAdicionarMusica" class="dialog dialog-grande">
+    <h2>Adicionar música</h2>
+    <div class="search-wrap">
+      <span>⌕</span>
+      <input id="buscaAdicionarMusica" type="search" placeholder="Buscar no repertório…">
     </div>
-  </div>
-</dialog>
-
-<!-- Ordem importa: notas → storage → cifra → autoscroll → backup → app -->
- <!-- LOGIN DOS ADMINISTRADORES -->
-<dialog id="dialogLogin" class="dialog-login">
-
-  <h2>🔐 Acesso administrativo</h2>
-
-  <p>Entre para gerenciar as músicas do TRG Cifras.</p>
-
-  <form id="formLogin">
-
-    <div class="campo">
-      <label for="loginEmail">E-mail</label>
-      <input
-        type="email"
-        id="loginEmail"
-        placeholder="Seu e-mail"
-        autocomplete="username"
-        required>
+    <div id="listaAdicionarMusica" class="song-list compact"></div>
+    <div class="form-actions">
+      <button id="btnFecharAdicionarMusica" class="btn secondary" type="button">Fechar</button>
     </div>
+  </dialog>
 
-    <div class="campo">
-      <label for="loginSenha">Senha</label>
-      <input
-        type="password"
-        id="loginSenha"
-        placeholder="Sua senha"
-        autocomplete="current-password"
-        required>
+  <!-- MAIS -->
+  <dialog id="dialogMais" class="dialog">
+    <h2>TRG Cifras</h2>
+    <div class="menu-list">
+      <button id="btnMaisRecentes" type="button">◷ Músicas recentes</button>
+      <button id="btnMaisInstalar" type="button">📲 Instalar aplicativo</button>
+      <button id="btnMaisStatus" type="button">☁️ Ver status da sincronização</button>
+      <button id="btnMaisFechar" type="button">Fechar</button>
     </div>
+  </dialog>
 
-    <p id="loginMensagem" aria-live="polite"></p>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-    <div class="botoes">
-      <button type="submit" class="btn btn-primario">
-        Entrar
-      </button>
-
-      <button type="button"
-              id="btnFecharLogin"
-              class="btn btn-secundario">
-        Cancelar
-      </button>
-    </div>
-
-  </form>
-
-</dialog>
-<script src="js/notas.js"></script>
-<script src="js/storage.js"></script>
-<script src="js/cifra.js"></script>
-<script src="js/autoscroll.js"></script>
-<script src="js/backup.js"></script>
-<script src="js/app.js"></script>
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js')
-        .catch(erro => console.error('Erro no modo offline:', erro));
-    });
-  }
-</script>
-<script type="module" src="js/firebase.js"></script>
+  <script src="js/notas.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/cifra.js"></script>
+  <script src="js/autoscroll.js"></script>
+  <script src="js/backup.js"></script>
+  <script src="js/app.js"></script>
+  <script type="module" src="js/firebase.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js')
+        .catch(err => console.error('Service worker:', err)));
+    }
+  </script>
 </body>
 </html>
