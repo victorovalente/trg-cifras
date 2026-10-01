@@ -17,6 +17,8 @@ let contextoVoltar='dashboard';
 let tocandoPlaylistId=null;
 let tocandoPlaylistIndice=-1;
 let installPrompt=null;
+let playlistCompartilhada=null;
+let compartilhamentoPendente=null;
 
 const $=id=>document.getElementById(id);
 const TELAS=['telaDashboard','telaRepertorio','telaPlaylists','telaPlaylist','telaEditor','telaVer'];
@@ -279,16 +281,146 @@ function abrirDialogPlaylist(id=null){
   $('dialogPlaylist').showModal();
   setTimeout(()=>$('nomePlaylist').focus(),30);
 }
+
+function playlistAtual(){
+  if(playlistCompartilhada && playlistCompartilhada.id===playlistAbertaId) return playlistCompartilhada;
+  return playlists.find(x=>x.id===playlistAbertaId);
+}
+
+function base64UrlEncode(obj){
+  const texto=JSON.stringify(obj);
+  const bytes=new TextEncoder().encode(texto);
+  let bin='';
+  bytes.forEach(b=>bin+=String.fromCharCode(b));
+  return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+
+function base64UrlDecode(valor){
+  let b64=valor.replace(/-/g,'+').replace(/_/g,'/');
+  while(b64.length%4)b64+='=';
+  const bin=atob(b64);
+  const bytes=Uint8Array.from(bin,c=>c.charCodeAt(0));
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+function montarLinkPlaylist(p){
+  const payload={
+    v:1,
+    n:p.nome,
+    m:p.musicas.slice(0,100)
+  };
+  const base=location.href.split('#')[0];
+  return `${base}#playlist=${base64UrlEncode(payload)}`;
+}
+
+async function compartilharPlaylist(){
+  const p=playlistAtual();
+  if(!p)return;
+  if(!p.musicas.length){toast('Adicione músicas à playlist primeiro.');return}
+
+  const url=montarLinkPlaylist(p);
+  const dados={
+    title:`TRG Cifras — ${p.nome}`,
+    text:`Playlist "${p.nome}" no TRG Cifras`,
+    url
+  };
+
+  try{
+    if(navigator.share){
+      await navigator.share(dados);
+      return;
+    }
+    if(navigator.clipboard?.writeText){
+      await navigator.clipboard.writeText(url);
+      toast('Link da playlist copiado.');
+      return;
+    }
+    window.prompt('Copie o link da playlist:',url);
+  }catch(e){
+    if(e?.name!=='AbortError')console.error(e);
+  }
+}
+
+function carregarPlaylistCompartilhadaDaURL(){
+  const prefixo='#playlist=';
+  if(!location.hash.startsWith(prefixo))return false;
+
+  try{
+    const dados=base64UrlDecode(location.hash.slice(prefixo.length));
+    if(!dados || dados.v!==1 || typeof dados.n!=='string' || !Array.isArray(dados.m)) throw new Error('Link inválido');
+
+    const ids=[...new Set(dados.m.filter(id=>typeof id==='string'&&id))].slice(0,100);
+    compartilhamentoPendente={
+      id:'compartilhada-'+Date.now().toString(36),
+      nome:dados.n.trim().slice(0,80)||'Playlist compartilhada',
+      musicas:ids,
+      compartilhada:true
+    };
+    tentarAbrirCompartilhamento();
+    return true;
+  }catch(e){
+    console.error(e);
+    toast('Este link de playlist não é válido.');
+    history.replaceState(null,'',location.pathname+location.search);
+    return false;
+  }
+}
+
+function tentarAbrirCompartilhamento(){
+  if(!compartilhamentoPendente)return;
+  const conhecidos=new Set(cifras.map(c=>c.id));
+  const validas=compartilhamentoPendente.musicas.filter(id=>conhecidos.has(id));
+
+  // Aguarda a nuvem quando ainda não há repertório carregado.
+  if(!cifras.length && navigator.onLine)return;
+
+  playlistCompartilhada={...compartilhamentoPendente,musicas:validas};
+  compartilhamentoPendente=null;
+  abrirPlaylist(playlistCompartilhada.id);
+}
+
+function salvarPlaylistCompartilhada(){
+  if(!playlistCompartilhada)return;
+  let nome=playlistCompartilhada.nome;
+  const nomes=new Set(playlists.map(p=>p.nome.toLocaleLowerCase('pt-BR')));
+  if(nomes.has(nome.toLocaleLowerCase('pt-BR'))) nome+= ' (cópia)';
+
+  const nova={
+    id:gerarId(),
+    nome,
+    musicas:[...playlistCompartilhada.musicas]
+  };
+  playlists.push(nova);
+  salvarPlaylists(playlists);
+  playlistCompartilhada=null;
+  playlistAbertaId=nova.id;
+  history.replaceState(null,'',location.pathname+location.search);
+  atualizarDashboard();
+  renderPlaylists();
+  abrirPlaylist(nova.id);
+  toast('Playlist salva neste aparelho.');
+}
+
 function abrirPlaylist(id){
-  const p=playlists.find(x=>x.id===id);if(!p)return abrirPlaylists();
+  const p=(playlistCompartilhada&&playlistCompartilhada.id===id)?playlistCompartilhada:playlists.find(x=>x.id===id);
+  if(!p)return abrirPlaylists();
   playlistAbertaId=id;
+  const compartilhada=!!p.compartilhada;
   $('playlistTitulo').textContent=p.nome;
-  $('playlistResumo').textContent=`${p.musicas.length} música${p.musicas.length===1?'':'s'} • ordem salva neste aparelho`;
+  $('playlistResumo').textContent=compartilhada
+    ? `${p.musicas.length} música${p.musicas.length===1?'':'s'} • playlist compartilhada`
+    : `${p.musicas.length} música${p.musicas.length===1?'':'s'} • ordem salva neste aparelho`;
+
+  $('btnSalvarPlaylistCompartilhada').classList.toggle('oculto',!compartilhada);
+  $('btnRenomearPlaylist').classList.toggle('oculto',compartilhada);
+  $('btnExcluirPlaylist').classList.toggle('oculto',compartilhada);
+  $('btnAdicionarMusicaPlaylist').classList.toggle('oculto',compartilhada);
+
   renderMusicasPlaylist();
   mostrarTela('telaPlaylist','playlists');
 }
 function renderMusicasPlaylist(){
-  const p=playlists.find(x=>x.id===playlistAbertaId);if(!p)return;
+  const p=playlistAtual();if(!p)return;
   const box=$('musicasPlaylist');box.replaceChildren();
   $('playlistSemMusicas').classList.toggle('oculto',p.musicas.length>0);
   p.musicas.forEach((id,idx)=>{
@@ -300,13 +432,16 @@ function renderMusicasPlaylist(){
     const sm=document.createElement('small');sm.textContent=`${c.artista||'Sem artista'} • Tom ${c.tom}`;
     main.append(st,sm);main.onclick=()=>{tocandoPlaylistId=p.id;tocandoPlaylistIndice=idx;abrirVisualizador(id,'playlist')};
     const acts=document.createElement('div');acts.className='playlist-song-actions';
-    const up=document.createElement('button');up.type='button';up.textContent='↑';up.title='Subir';
-    up.disabled=idx===0;up.onclick=()=>moverMusicaPlaylist(idx,-1);
-    const down=document.createElement('button');down.type='button';down.textContent='↓';down.title='Descer';
-    down.disabled=idx===p.musicas.length-1;down.onclick=()=>moverMusicaPlaylist(idx,1);
-    const del=document.createElement('button');del.type='button';del.textContent='×';del.title='Remover';
-    del.onclick=()=>removerDaPlaylist(id);
-    acts.append(up,down,del);row.append(order,main,acts);box.append(row);
+    if(!p.compartilhada){
+      const up=document.createElement('button');up.type='button';up.textContent='↑';up.title='Subir';
+      up.disabled=idx===0;up.onclick=()=>moverMusicaPlaylist(idx,-1);
+      const down=document.createElement('button');down.type='button';down.textContent='↓';down.title='Descer';
+      down.disabled=idx===p.musicas.length-1;down.onclick=()=>moverMusicaPlaylist(idx,1);
+      const del=document.createElement('button');del.type='button';del.textContent='×';del.title='Remover';
+      del.onclick=()=>removerDaPlaylist(id);
+      acts.append(up,down,del);
+    }
+    row.append(order,main,acts);box.append(row);
   });
 }
 function moverMusicaPlaylist(indice,direcao){
@@ -344,11 +479,11 @@ function renderAdicionarMusica(){
   });
 }
 function tocarPlaylist(){
-  const p=playlists.find(x=>x.id===playlistAbertaId);if(!p||!p.musicas.length)return toast('Adicione músicas à playlist primeiro.');
+  const p=playlistAtual();if(!p||!p.musicas.length)return toast('Adicione músicas à playlist primeiro.');
   tocandoPlaylistId=p.id;tocandoPlaylistIndice=0;abrirVisualizador(p.musicas[0],'playlist');
 }
 function atualizarPlayerPlaylist(){
-  const p=playlists.find(x=>x.id===tocandoPlaylistId);
+  const p=(playlistCompartilhada&&playlistCompartilhada.id===tocandoPlaylistId)?playlistCompartilhada:playlists.find(x=>x.id===tocandoPlaylistId);
   const bar=$('playlistPlayer');
   if(!p||tocandoPlaylistIndice<0||tocandoPlaylistIndice>=p.musicas.length){bar.classList.add('oculto');return}
   bar.classList.remove('oculto');
@@ -357,7 +492,7 @@ function atualizarPlayerPlaylist(){
   $('btnPlaylistProxima').disabled=tocandoPlaylistIndice===p.musicas.length-1;
 }
 function mudarMusicaPlaylist(delta){
-  const p=playlists.find(x=>x.id===tocandoPlaylistId);if(!p)return;
+  const p=(playlistCompartilhada&&playlistCompartilhada.id===tocandoPlaylistId)?playlistCompartilhada:playlists.find(x=>x.id===tocandoPlaylistId);if(!p)return;
   const novo=tocandoPlaylistIndice+delta;if(novo<0||novo>=p.musicas.length)return;
   tocandoPlaylistIndice=novo;abrirVisualizador(p.musicas[novo],'playlist');
 }
@@ -395,6 +530,7 @@ window.receberCifrasDaNuvem=function(lista){
   cifras=lista;
   try{salvarCifras(lista)}catch(e){}
   limparIdsInvalidos();
+  tentarAbrirCompartilhamento();
   atualizarDashboard();
   renderLista();
   renderPlaylists();
@@ -463,6 +599,8 @@ function ligarEventos(){
   $('buscaAdicionarMusica').oninput=renderAdicionarMusica;
   $('btnFecharAdicionarMusica').onclick=()=>$('dialogAdicionarMusica').close();
   $('btnTocarPlaylist').onclick=tocarPlaylist;
+  $('btnCompartilharPlaylist').onclick=compartilharPlaylist;
+  $('btnSalvarPlaylistCompartilhada').onclick=salvarPlaylistCompartilhada;
   $('btnPlaylistAnterior').onclick=()=>mudarMusicaPlaylist(-1);
   $('btnPlaylistProxima').onclick=()=>mudarMusicaPlaylist(1);
 
@@ -486,4 +624,5 @@ function ligarEventos(){
   window.addEventListener('online',()=>window.TRGCifras.setStatus('Conectando à nuvem…','online'));
   window.addEventListener('offline',()=>window.TRGCifras.setStatus('Offline • repertório salvo','offline'));
   mostrarDashboard();
+  carregarPlaylistCompartilhadaDaURL();
 })();
