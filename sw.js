@@ -1,4 +1,4 @@
-const CACHE='trg-cifras-v6';
+const CACHE='trg-cifras-v7';
 const APP=[
   './','./index.html','./css/style.css',
   './js/notas.js','./js/storage.js','./js/cifra.js','./js/autoscroll.js','./js/backup.js','./js/app.js','./js/firebase.js',
