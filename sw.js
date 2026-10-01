@@ -1,82 +1,37 @@
-// TRG Cifras — Modo Offline
-
-const CACHE_NAME = 'trg-cifras-v2';
-
-const ARQUIVOS = [
-  './',
-  './index.html',
-  './css/style.css',
-  './js/notas.js',
-  './js/storage.js',
-  './js/cifra.js',
-  './js/autoscroll.js',
-  './js/backup.js',
-'./js/app.js',
-'./manifest.webmanifest',
-'./icons/icon-192.png',
-'./icons/icon-512.png'
+const CACHE='trg-cifras-v5';
+const APP=[
+  './','./index.html','./css/style.css',
+  './js/notas.js','./js/storage.js','./js/cifra.js','./js/autoscroll.js','./js/backup.js','./js/app.js','./js/firebase.js',
+  './manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png'
 ];
 
-// Salva os arquivos necessários para funcionar offline
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ARQUIVOS);
-    })
-  );
-
+self.addEventListener('install',e=>{
+  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(APP)));
   self.skipWaiting();
 });
 
-// Remove caches antigos
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((nomes) => {
-      return Promise.all(
-        nomes
-          .filter((nome) =>
-            nome.startsWith('trg-cifras-') &&
-            nome !== CACHE_NAME
-          )
-          .map((nome) => caches.delete(nome))
-      );
-    }).then(() => self.clients.claim())
+self.addEventListener('activate',e=>{
+  e.waitUntil(
+    caches.keys()
+      .then(keys=>Promise.all(keys.filter(k=>k.startsWith('trg-cifras-')&&k!==CACHE).map(k=>caches.delete(k))))
+      .then(()=>self.clients.claim())
   );
 });
 
-// Usa a internet quando disponível e o cache quando offline
-self.addEventListener('fetch', (event) => {
-  const requisicao = event.request;
+self.addEventListener('fetch',e=>{
+  if(e.request.method!=='GET')return;
+  const u=new URL(e.request.url);
+  if(u.origin!==self.location.origin)return;
 
-  if (
-    requisicao.method !== 'GET' ||
-    new URL(requisicao.url).origin !== self.location.origin
-  ) {
-    return;
-  }
-
-  event.respondWith(
-    caches.open(CACHE_NAME).then(async (cache) => {
-      try {
-        const resposta = await fetch(requisicao);
-
-        if (resposta.ok) {
-          await cache.put(requisicao, resposta.clone());
-        }
-
-        return resposta;
-      } catch (erro) {
-        const salva = await cache.match(requisicao);
-
-        if (salva) return salva;
-
-        if (requisicao.mode === 'navigate') {
-          return (await cache.match('./index.html')) ||
-            Response.error();
-        }
-
-        return Response.error();
-      }
-    })
-  );
+  e.respondWith((async()=>{
+    const cache=await caches.open(CACHE);
+    try{
+      const resposta=await fetch(e.request);
+      if(resposta.ok)cache.put(e.request,resposta.clone());
+      return resposta;
+    }catch(err){
+      return (await cache.match(e.request)) ||
+        (e.request.mode==='navigate'?await cache.match('./index.html'):Response.error());
+    }
+  })());
 });
